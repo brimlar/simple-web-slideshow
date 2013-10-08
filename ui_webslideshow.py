@@ -15,7 +15,7 @@ class Ui_WebSlideshow(object):
         WebSlideshow.resize(680, 655)
         WebSlideshow.setMinimumSize(QtCore.QSize(680, 650))
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("VideoFolder.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("Video-Folder.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         WebSlideshow.setWindowIcon(icon)
         self.centralwidget = QtGui.QWidget(WebSlideshow)
         self.centralwidget.setMinimumSize(QtCore.QSize(670, 0))
