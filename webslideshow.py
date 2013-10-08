@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
 '''
+Copyright 2013 Brian Mansberger
+
 This file is part of Simple Web Slideshow.
 
 Simple Web Slideshow is free software: you can redistribute it and/or modify
