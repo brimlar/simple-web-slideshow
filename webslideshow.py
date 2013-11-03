@@ -36,7 +36,7 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
     DEF_DURATION = 20               # initial / default duration
     MIN_DURATION = 1                # min duration i.e. time between slides
     MAX_DURATION = 60               # max duration i.e. time between slides
-    MAX_SLIDES = 30                 # max number of slides
+    MAX_SLIDES = 100                 # max number of slides
     EFFECTS = ["Blur", "Abrupt", "HorizontalSlide", "VerticalSlide"]
     RESOLUTIONS = ["1024x768", "1280x720", "1366x768", "1600x1200", "1920x1080"]
 
@@ -324,6 +324,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         self.lbl_warning.setWordWrap(True)
 
         # Signals and slots
+        self.btn_rotate.clicked.connect(self.rotate_pic)
         self.btn_upload.clicked.connect(self.upload_pic)
         self.le_caption.editingFinished.connect(self.commit_desc)
         self.le_caption.selectionChanged.connect(self.commit_desc)
@@ -350,17 +351,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         elif self.cur_mode == self.SLIDE_TYPES[1]:
             # Letterbox it if there is a picture present
             if not self.upic.isNull():
-                if self.upic.width() > self.res[0] or self.upic.height() > self.res[1]:
-                    mbox = QMessageBox()
-                    mbox.setWindowTitle("This picture can't be letterboxed")
-                    mbox.setText("Sorry; you can't letterbox this picture " 
-                                 "because at least one of its dimensions is "
-                                 "equal to (or larger) than the resolution "
-                                 "you picked.")
-                    mbox.exec_()
-                    self.cb_type.setCurrentIndex(0)
-                else:
-                    self.window_scale()
+                self.window_scale()
             # Re-enable upload button
             self.btn_upload.setEnabled(True)
         else:
@@ -391,6 +382,14 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         except Exception as e:
             print("Line 370: {0}".format(e))
 
+
+    def rotate_pic(self):
+        # rotates the uploaded pixmap 90 degrees clockwise
+        # and recalculates its dimensions
+        # then redraws it in the QGraphicsView
+        trans = QTransform()
+        self.upic.transformed(trans.rotate(90))
+        self.clean_prev()
 
 
     # btn_upload slot
