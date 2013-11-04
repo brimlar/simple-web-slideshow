@@ -181,6 +181,7 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
                                    (len(self.psegments) + 3), self)
         progress.setWindowTitle("Saving Project")
         progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
         progress.setAutoReset(False)
         # 1) Resize the pics
         # 2) Put the captions into a list
@@ -251,8 +252,6 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         for seg in self.psegments:
             if seg.upic:
                 # Then scale it properly if it's mean to be full-screened
-                # We'll do nothing to Letterboxed pictures and let the HTML
-                # handle them.
                 if seg.cb_type.currentText() == "Full screen":
                     seg.newpic = seg.upic.scaled(seg.newres[0], seg.newres[1])
                     print("Cropping to {0}".format(seg.cropdims))
@@ -326,34 +325,34 @@ class PictureSegment(QWidget, Ui_PictureSegment):
 
     # cb_type slot
     def change_sltype(self):
-        self.cur_mode = self.cb_type.currentText()
+        cur_mode = self.cb_type.currentText()
 
-        if self.cur_mode == self.SLIDE_TYPES[0]:
+        if cur_mode == self.SLIDE_TYPES[0]:
             # Fullscreen it!
             if not self.upic.isNull():
                 self.get_newres()
                 # Calculate offsets to center the pixmap item
                 self.pmi.setOffset(0, 0)
                 # Enlarge scene to fit the picture
-                self.setSceneRect(0, 0, self.upic.width(), self.upic.height())
+                self.scene.setSceneRect(0, 0, self.upic.width(), self.upic.height())
                 self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
             else:
                 print("self.upic does not exist")
             # Re-enable upload button
             self.btn_upload.setEnabled(True)
-        elif self.cur_mode == self.SLIDE_TYPES[1]:
+        elif cur_mode == self.SLIDE_TYPES[1]:
             # Letterbox it if there is a picture present
             if not self.upic.isNull():
                 self.letterbox_pic()
             # Re-enable upload button
             self.btn_upload.setEnabled(True)
         else:
-            if self.cur_mode == self.SLIDE_TYPES[2]:
+            if cur_mode == self.SLIDE_TYPES[2]:
                 # Blank white it!
                 # Need to blank the previous picture and all derivations
                 self.clean_prev()
                 self.set_vp_bg(Qt.white)
-            elif self.cur_mode == self.SLIDE_TYPES[3]:
+            elif cur_mode == self.SLIDE_TYPES[3]:
                 # Blank black it!
                 # Need to blank the previous picture and all derivations
                 self.clean_prev()
@@ -381,8 +380,19 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         # and recalculates its dimensions
         # then redraws it in the QGraphicsView
         trans = QTransform()
-        self.upic.transformed(trans.rotate(90))
+        self.rpic = self.upic.transformed(trans.rotate(90))
         self.clean_prev()
+        self.upic = self.rpic
+        del self.rpic
+        self.pmi = self.scene.addPixmap(self.upic)
+        print("New res: {0} x {1}".format(self.upic.width(), self.upic.height()))
+        self.change_sltype()
+        '''
+        self.resize_scene(self.cb_type.currentText())
+        self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+        self.get_newres()
+        '''
+        self.res_tagger(self.upic, self.scene)
 
 
     # btn_upload slot
@@ -414,16 +424,8 @@ class PictureSegment(QWidget, Ui_PictureSegment):
                 self.resize_scene(self.cb_type.currentText())
                 self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
                 self.get_newres()
-            self.gitem = QGraphicsTextItem(str(self.upic.width()) + "x" + str(self.upic.height()))
-            self.gitem.setFlags(QGraphicsItem.ItemIgnoresTransformations)
-            self.gitem.setZValue(4)
-            self.scene.addItem(self.gitem)
-            self.rect = self.scene.addRect((self.gitem.boundingRect()), Qt.NoPen,
-                                           self.WHITE_TRANS)
-            self.rect.setFlags(QGraphicsItem.ItemIgnoresTransformations)
-            # gitem (resolution) sits on top of rect (res background square)
-            self.rect.setZValue(3)
-
+            # Draw the resolution text and box
+            self.res_tagger(self.upic, self.scene)
             # Finally, call our message maker
             self.msg_maker()
 
@@ -431,6 +433,20 @@ class PictureSegment(QWidget, Ui_PictureSegment):
     def commit_desc(self):
         # When called, commits caption to PictureSegment object variable
         self.caption = self.le_caption.text()
+
+
+    def res_tagger(self, pic, scene):
+        # Creates two new attributes, self.restag and self.resbox
+        # and adds them to the QGraphicsScene
+        self.restag = QGraphicsTextItem(str(pic.width()) + "x" + str(pic.height()))
+        self.restag.setFlags(QGraphicsItem.ItemIgnoresTransformations)
+        # We want the resolution (4) above the res box (3)
+        # Which are both above the red overlay boxes (2)
+        self.restag.setZValue(4)
+        scene.addItem(self.restag)
+        self.resbox = scene.addRect((self.restag.boundingRect()), Qt.NoPen, self.WHITE_TRANS)
+        self.resbox.setFlags(QGraphicsItem.ItemIgnoresTransformations)
+        self.resbox.setZValue(3)
 
 
     def vp_setter(self, res):
