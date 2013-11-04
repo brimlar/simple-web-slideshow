@@ -161,16 +161,8 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
                     vp.get_newres()
                     vp.msg_maker()
                 elif vp.cb_type.currentText() == "Letterboxed":
-                    if vp.upic.width() > vp.res[0]:
-                        vp.get_newres()
-                        vp.msg_maker()
-                        vp.cb_type.setCurrentIndex(0)
-                    elif vp.upic.height() > vp.res[1]:
-                        vp.get_newres()
-                        vp.msg_maker()
-                        vp.cb_type.setCurrentIndex(0)
-                    else:
-                        vp.window_scale()
+                    vp.letterbox_pic()
+                    vp.msg_maker()
 
 
     def cancel_proj(self):
@@ -203,10 +195,10 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         # Check if dest dir exists, mkdir new if not
         # We'll increment the title by a number each time
         i = 1
-        newtit = tit
+        newtit = tit.lower().replace(" ", "-")
         p = QDir()
         while(p.exists(self.PPATH + "/" + newtit)):
-            newtit = tit + "-" + str(i)
+            newtit = newtit + "-" + str(i)
             i = i + 1
         curprojf = self.PPATH + "/" + newtit
         try:
@@ -267,8 +259,8 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
                     # Crop the pic to the preset cropped dimensions
                     seg.newpic = seg.newpic.copy(*seg.cropdims)
                 elif seg.cb_type.currentText() == "Letterboxed":
-                    seg.newpic = seg.upic
-                    print("Preserving this photo's size...")
+                    seg.newpic = seg.upic.scaled(seg.newres[0], seg.newres[1])
+                    print("Scaling to {0}".format(seg.newres))
             else:
                 if seg.cb_type.currentText() == "Blank white":
                     # Create a blank white slide
@@ -342,7 +334,8 @@ class PictureSegment(QWidget, Ui_PictureSegment):
                 self.get_newres()
                 # Calculate offsets to center the pixmap item
                 self.pmi.setOffset(0, 0)
-                self.resize_scene(self.cb_type.currentText())
+                # Enlarge scene to fit the picture
+                self.setSceneRect(0, 0, self.upic.width(), self.upic.height())
                 self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
             else:
                 print("self.upic does not exist")
@@ -351,7 +344,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         elif self.cur_mode == self.SLIDE_TYPES[1]:
             # Letterbox it if there is a picture present
             if not self.upic.isNull():
-                self.window_scale()
+                self.letterbox_pic()
             # Re-enable upload button
             self.btn_upload.setEnabled(True)
         else:
@@ -416,19 +409,11 @@ class PictureSegment(QWidget, Ui_PictureSegment):
             # If someone selects Letterboxed, make sure the pic is
             # smaller than the desired resolution
             if self.cb_type.currentText() == "Letterboxed":
-                if self.upic.width() > self.res[0]:
-                    self.cb_type.setCurrentIndex(0)
-                    self.resize_scene("Full screen")
-                elif self.upic.height() > self.res[1]:
-                    self.cb_type.setCurrentIndex(0)
-                    self.resize_scene("Full screen")
-                else:
-                    self.resize_scene(self.cb_type.currentText())
-                    self.window_scale()
+                self.letterbox_pic()
             else:
                 self.resize_scene(self.cb_type.currentText())
                 self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
-            self.get_newres()
+                self.get_newres()
             self.gitem = QGraphicsTextItem(str(self.upic.width()) + "x" + str(self.upic.height()))
             self.gitem.setFlags(QGraphicsItem.ItemIgnoresTransformations)
             self.gitem.setZValue(4)
@@ -537,7 +522,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         self.pmi.setOffset(left_offset, top_offset)
 
         # Set background for letterboxed mode to GRAY_BG
-        self.set_vp_bg(self.GRAY_BG)
+        # self.set_vp_bg(self.GRAY_BG)
         self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
 
 
@@ -558,6 +543,54 @@ class PictureSegment(QWidget, Ui_PictureSegment):
             self.scene.setSceneRect(0, 0, self.res[0], self.res[1])
 
 
+    def letterbox_pic(self):
+        # calculates future scaled resolution for use when saving pictures
+        # inserts the values into self.newres
+        dims = [self.upic.width(), self.upic.height()]
+
+        # Set background for letterboxed mode to GRAY_BG
+        self.set_vp_bg(self.GRAY_BG)
+
+        # Remove red overlay cropboxes if present
+        self.remove_cropboxes()
+
+        width_surplus = dims[0] - self.res[0]
+        height_surplus = dims[1] - self.res[1]
+
+        # We only care if a picture is bigger than the resolution
+        # If it's smaller, we'll just letterbox it as-is without scaling
+        if (width_surplus > 0) or (height_surplus > 0):
+            if width_surplus > height_surplus:
+                #we need to scale it so width fits
+                coef = self.res[0] / float(dims[0])
+                self.newres = [self.res[0], int(coef * dims[1])]
+            elif height_surplus > width_surplus:
+                #we need to scale it so height fits
+                coef = self.res[1] / float(dims[1])
+                self.newres = [int(coef * dims[0]), self.res[1]]
+            # Resize the scene so it stretches to fit the larger pic
+            self.scene.setSceneRect(0, 0, self.upic.width(), self.upic.height())
+            # and draw the larger picture within the viewport
+            self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+        else:
+            # else we just accept the smaller picture's dimensions
+            self.newres = [dims[0], dims[1]]
+            # Resize the scene so it goes back to normal
+            self.scene.setSceneRect(0, 0, self.res[0], self.res[1])
+            # and scale the viewport to the the combobox resolution
+            self.window_scale()
+        print("{0}'s new res is {1}".format(dims, self.newres))
+
+
+    def remove_cropboxes(self):
+        # Remove the red overlay boxes if the item has them
+        try:
+            self.boxgroup.scene().removeItem(self.boxgroup)
+            del self.boxgroup
+        except Exception as e:
+            print("Error on line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
+
+
     def get_newres(self):
         # calculates new resolution of a pic based on combobox selection
         # draws red box overlay on picture as well
@@ -569,12 +602,8 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         if self.cb_type.currentText() == "Full screen":
             self.set_vp_bg()
 
-        # remove the red overlay boxes if the item has them
-        try:
-            self.boxgroup.scene().removeItem(self.boxgroup)
-            del self.boxgroup
-        except Exception as e:
-            print("Line 570: {0}".format(e))
+        # Remove overlay cropboxes
+        self.remove_cropboxes()
 
         for i, dim in enumerate(dims):
             # other_ind will be 1 if i is 0, 0 if i is 1
