@@ -196,7 +196,11 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         # Check if dest dir exists, mkdir new if not
         # We'll increment the title by a number each time
         i = 1
-        newtit = tit.lower().replace(" ", "-")
+        for ch in [",", " ", "?", "!", ":", ";", "(", ")", "."]:
+            if ch in newtit:
+                newtit = tit.lower().replace(ch, "-")
+        if newtit[-1] == "-":
+            newtit = newtit[:-1]
         p = QDir()
         while(p.exists(self.PPATH + "/" + newtit)):
             newtit = newtit + "-" + str(i)
