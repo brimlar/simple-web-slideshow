@@ -26,7 +26,7 @@ from ui_webslideshow import Ui_WebSlideshow
 from ui_picturesegment import Ui_PictureSegment
 from htmlgenerator import HTML_Generator
 
-__version__ = '0.0.1'
+__version__ = '0.9'
 
 
 class Projwindow(QMainWindow, Ui_WebSlideshow):
@@ -196,9 +196,13 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         # Check if dest dir exists, mkdir new if not
         # We'll increment the title by a number each time
         i = 1
+        newtit = tit
         for ch in [",", " ", "?", "!", ":", ";", "(", ")", "."]:
-            if ch in newtit:
-                newtit = tit.lower().replace(ch, "-")
+            if ch in tit:
+                newtit = newtit.replace(ch, "-")
+        newtit = newtit.replace("--", "-")
+        newtit = newtit.lower()
+        # Delete the last character if it's a "-"
         if newtit[-1] == "-":
             newtit = newtit[:-1]
         p = QDir()
