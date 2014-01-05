@@ -159,10 +159,10 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
                 vp.graphicsView.fitInView(vp.scene.sceneRect(), Qt.KeepAspectRatio)
                 if vp.cb_type.currentText() == "Full screen":
                     vp.get_newres()
-                    vp.msg_maker()
+                    vp.msg_maker(vp.cb_type.currentText())
                 elif vp.cb_type.currentText() == "Letterboxed":
                     vp.letterbox_pic()
-                    vp.msg_maker()
+                    vp.msg_maker(vp.cb_type.currentText())
 
 
     def cancel_proj(self):
@@ -367,7 +367,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
                 self.set_vp_bg(Qt.black)
             # Disable upload button
             self.btn_upload.setDisabled(True)
-        self.msg_maker()
+        self.msg_maker(self.cb_type.currentText())
 
 
     def clean_prev(self):
@@ -380,7 +380,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
             # Reset scene to a 0 size for housekeeping
             self.scene.setSceneRect(0, 0, 0, 0)
         except Exception as e:
-            print("Line 370: {0}".format(e))
+            print("Error on line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
 
 
     def rotate_pic(self):
@@ -435,7 +435,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
             # Draw the resolution text and box
             self.res_tagger(self.upic, self.scene)
             # Finally, call our message maker
-            self.msg_maker()
+            self.msg_maker(self.cb_type.currentText())
 
 
     def commit_desc(self):
@@ -471,9 +471,10 @@ class PictureSegment(QWidget, Ui_PictureSegment):
             self.graphicsView.setMaximumSize(self.STD_BOX)
 
 
-    def msg_maker(self):
+    def msg_maker(self, mode):
         # Depending on image size and selected resolution,
         # give a message in the label
+        # mode is typically cb_type.currentText()
 
         MSG1 = "<b>This image is a perfect fit.</b>"
         MSG2 = ("<b><font color='red'>Warning</font></b>: The height on this "
@@ -490,43 +491,60 @@ class PictureSegment(QWidget, Ui_PictureSegment):
                 "smaller than the target resolution. Its width and height will "
                 "both be <b>stretched</b>, and a small amount may be cropped.")
         MSG6 = ("You have selected 'Letterboxed' mode for this picture, which "
-                "means that its size will be unmodified and it will be centered "
+                "means that it will not be cropped and it will be centered "
                 "in the slideshow.")
         MSG7 = ("This image is bigger than the target resolution. "
                 "It will be resized and/or cropped to compensate, but it will "
                 "look OK.")
+        MSG8 = ("You have chosen to Letterbox this picture, but it comes out "
+                "to be the same resolution as if you had 'full-screened' it. "
+                "It will look fine (but consider full-screening it.)")
         W_MSG = ("<font color='red'>The quality of this image might be "
                  "degraded as a result.</font>")
 
         if not self.upic.isNull():
-            if self.upic.width() == self.res[0]:
+            if mode == "Letterboxed":
+                if (self.newres[0] == self.res[0] and self.newres[1] == self.res[1]):
+                    # Rare case where it gets letterboxed but it is the same
+                    # resolution as the 'optimized resolution', in which
+                    # case they could full screen it (and we tell them this)
+                    self.lbl_warning.setText(MSG8)
+                else:
+                    # Letterboxed means no data is lost and msg is the same
+                    self.lbl_warning.setText(MSG6)
+            elif self.upic.width() == self.res[0]:
+                # If width is the same as target resolution
                 if self.upic.height() < self.res[1]:
-                    # TODO if letterbox or if full, etc
+                # Width same, height is less
                     self.lbl_warning.setText(MSG2 + W_MSG)
                 elif self.upic.height() > self.res[1]:
+                # Width same, height is more
                     self.lbl_warning.setText(MSG4)
                 else:
+                # Both width and height match target res!
                     self.lbl_warning.setText(MSG1)
             elif self.upic.width() < self.res[0]:
+                # If width is less than resolution
                 if self.upic.height() <= self.res[1]:
                     # The image is smaller in both dimensions
-                    # Let's give two different messages based upon slide type
-                    if self.cb_type.currentText() == "Letterboxed":
-                        self.lbl_warning.setText(MSG6)
-                    elif self.cb_type.currentText() == "Full screen":
-                        self.lbl_warning.setText(MSG5 + W_MSG)
-                elif self.upic.height() > self.res[1]:
-                    self.lbl_warning.setText(MSG3 + W_MSG)
+                    self.lbl_warning.setText(MSG5 + W_MSG)
                 else:
+                    # Else height equals or is larger than target,
+                    # in which case we're going to have to stretch width
                     self.lbl_warning.setText(MSG3 + W_MSG)
             else:
+                # Else width must be more than resolution
                 if self.upic.height() < self.res[1]:
-                    self.lbl_warning.setText(MSG3 + W_MSG)
+                    # Width is more, but height is less
+                    self.lbl_warning.setText(MSG2 + W_MSG)
                 elif self.upic.height() > self.res[1]:
+                    # Width is more, height is more
                     self.lbl_warning.setText(MSG7)
                 else:
+                    # Width is more, height is same
                     self.lbl_warning.setText(MSG4)
         else:
+            # Else there's no picture, so blank the msg
             self.lbl_warning.setText("")
 
 
@@ -534,7 +552,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         try:
             self.boxgroup.scene().removeItem(self.boxgroup)
         except Exception as e:
-            print("Line 512: {0}".format(e))
+            print("Error on line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
         # If Letterboxed mode is selected, scale the uploaded pic
         # in the viewport box to reflect this
         # First, setSceneRect for letterboxed mode
@@ -578,20 +596,17 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         # Remove red overlay cropboxes if present
         self.remove_cropboxes()
 
-        width_surplus = dims[0] - self.res[0]
-        height_surplus = dims[1] - self.res[1]
+        width_coef = round(self.res[0] / float(dims[0]), 4)
+        print("Width coef is {0}".format(width_coef))
+        height_coef = round(self.res[1] / float(dims[1]), 4)
+        print("Height coef is {0}".format(height_coef))
 
         # We only care if a picture is bigger than the resolution
         # If it's smaller, we'll just letterbox it as-is without scaling
-        if (width_surplus > 0) or (height_surplus > 0):
-            if width_surplus > height_surplus:
-                #we need to scale it so width fits
-                coef = self.res[0] / float(dims[0])
-                self.newres = [self.res[0], int(coef * dims[1])]
-            elif height_surplus > width_surplus:
-                #we need to scale it so height fits
-                coef = self.res[1] / float(dims[1])
-                self.newres = [int(coef * dims[0]), self.res[1]]
+        if (width_coef < 1) or (height_coef < 1):
+            # we want the smaller number, the more severe ratio
+            coef = min(width_coef, height_coef)
+            self.newres = [int(coef * dims[0]), int(coef * dims[1])]
             # Resize the scene so it stretches to fit the larger pic
             self.scene.setSceneRect(0, 0, self.upic.width(), self.upic.height())
             # and draw the larger picture within the viewport
@@ -629,11 +644,17 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         # Remove overlay cropboxes
         self.remove_cropboxes()
 
+        # Get the ratios in diff between actual h/w and target
+        width_coef = round(self.res[0] / float(self.dims[0]), 4)
+        height_coef = round(self.res[1] / float(self.dims[1]), 4)
+
+        if width_coef > height_coef
+
         for i, dim in enumerate(dims):
             # other_ind will be 1 if i is 0, 0 if i is 1
             other_ind = 1 - i
             other = dims[other_ind]
-            x = self.res[i] / float(dim)
+            x = round(self.res[i] / float(dim), 4)
             other_res = int(x * dims[other_ind])
 
             if other_res >= self.res[other_ind]:
@@ -643,6 +664,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
                     # we scaled width and will crop height
                     self.newres = [self.res[0], other_res]
                     leftover = other_res - self.res[1]
+                    print("LeftoverH is {0}".format(leftover))
                     # We need to divide by x so the rects show what will
                     # really be cut from the original photo
                     self.bx1 = QRectF(0, 0, dims[0], (0.5 * leftover) / x)
@@ -655,6 +677,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
                     # we scaled height and will crop width
                     self.newres = [other_res, self.res[1]]
                     leftover = other_res - self.res[0]
+                    print("LeftoverW is {0}".format(leftover))
                     # We need to divide by x so the rects show what will
                     # really be cut from the original photo
                     self.bx1 = QRectF(0, 0, (0.5 * leftover) / x, dims[1])
