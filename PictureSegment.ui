@@ -111,7 +111,7 @@
       </widget>
      </item>
      <item row="0" column="4" rowspan="2">
-      <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,0">
+      <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,0,0">
        <property name="sizeConstraint">
         <enum>QLayout::SetDefaultConstraint</enum>
        </property>
@@ -121,32 +121,6 @@
        <property name="topMargin">
         <number>6</number>
        </property>
-       <item row="1" column="2">
-        <widget class="QPushButton" name="btn_rotate">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>Rotate clockwise</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1" colspan="2">
-        <widget class="QLineEdit" name="le_caption">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>1</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="placeholderText">
-          <string>Enter a caption for this image, or leave blank</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="0">
         <widget class="QLabel" name="lbl_caption">
          <property name="sizePolicy">
@@ -160,17 +134,23 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="lbl_type">
+       <item row="1" column="2">
+        <widget class="QPushButton" name="btn_rotate">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
-          <string>Slide type:</string>
+          <string>Rotate clockwise</string>
          </property>
         </widget>
        </item>
        <item row="1" column="1">
         <widget class="QComboBox" name="cb_type">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -180,7 +160,40 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="0" colspan="3">
+       <item row="0" column="1" colspan="3">
+        <widget class="QLineEdit" name="le_caption">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>1</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="placeholderText">
+          <string>Enter a caption for this image, or leave blank</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="lbl_type">
+         <property name="text">
+          <string>Slide type:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="3">
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="2" column="0" colspan="4">
         <widget class="QLabel" name="lbl_warning">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">

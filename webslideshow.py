@@ -634,6 +634,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         # calculates new resolution of a pic based on combobox selection
         # draws red box overlay on picture as well
 
+        # boxes will become a QBoxGroup later here
         boxes = []
         dims = [self.upic.width(), self.upic.height()]
 
@@ -645,61 +646,46 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         self.remove_cropboxes()
 
         # Get the ratios in diff between actual h/w and target
-        width_coef = round(self.res[0] / float(self.dims[0]), 4)
-        height_coef = round(self.res[1] / float(self.dims[1]), 4)
+        width_coef = self.res[0] / float(dims[0])
+        height_coef = self.res[1] / float(dims[1])
 
-        if width_coef > height_coef
+        # Whether it's w or h, we want the side that is most different
+        coef = max(width_coef, height_coef)
 
-        for i, dim in enumerate(dims):
-            # other_ind will be 1 if i is 0, 0 if i is 1
-            other_ind = 1 - i
-            other = dims[other_ind]
-            x = round(self.res[i] / float(dim), 4)
-            other_res = int(x * dims[other_ind])
+        self.newres = [int(coef * dims[0]), int(coef * dims[1])]
+        # Resize the scene so it stretches to fit the larger pic
+        self.scene.setSceneRect(0, 0, self.upic.width(), self.upic.height())
+        # and draw the larger picture within the viewport
+        self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
 
-            if other_res >= self.res[other_ind]:
-            # only move forward if the other dimension
-            # is equal or greater to its counterpart
-                if i == 0:
-                    # we scaled width and will crop height
-                    self.newres = [self.res[0], other_res]
-                    leftover = other_res - self.res[1]
-                    print("LeftoverH is {0}".format(leftover))
-                    # We need to divide by x so the rects show what will
-                    # really be cut from the original photo
-                    self.bx1 = QRectF(0, 0, dims[0], (0.5 * leftover) / x)
-                    self.bx2 = QRectF(0, (other - ((0.5 * leftover) / x)),
-                                      dims[0], (0.5 * leftover) / x)
-                    # Set self.cropdims for when we save the resized image
-                    self.cropdims = (0, int(0.5 * leftover), int(self.res[0]),
-                                     int(self.res[1]))
-                else:
-                    # we scaled height and will crop width
-                    self.newres = [other_res, self.res[1]]
-                    leftover = other_res - self.res[0]
-                    print("LeftoverW is {0}".format(leftover))
-                    # We need to divide by x so the rects show what will
-                    # really be cut from the original photo
-                    self.bx1 = QRectF(0, 0, (0.5 * leftover) / x, dims[1])
-                    self.bx2 = QRectF((other - ((0.5 * leftover) /x)), 0,
-                                      (0.5 * leftover) / x, dims[1])
-                    # Set self.cropdims for when we save the resized image
-                    self.cropdims = (int(0.5 * leftover), 0,
-                                     int(self.res[0]),
-                                     int(self.res[1]))
-            else:
-                # let's move to the other one, it must be bigger
-                continue
+        if coef == width_coef:
+            # It means we need to crop height b/c we scaled width to fit
+            leftover = int(coef * dims[1]) - self.res[1]
+            self.bx1 = QRectF(0, 0, dims[0], (0.5 * leftover) / coef)
+            self.bx2 = QRectF(0, (dims[1] - ((0.5 * leftover) / coef)),
+                              dims[0], (0.5 * leftover) / coef)
+            # Set self.cropdims for when we save the resized image
+            self.cropdims = (0, int(0.5 * leftover), int(self.res[0]),
+                             int(self.res[1]))
+        else:
+            # It means we need to crop width b/c we scaled height to fit
+            leftover = int(coef * dims[0]) - self.res[0]
+            # We need to divide by x so the rects show what will
+            # really be cut from the original photo
+            self.bx1 = QRectF(0, 0, (0.5 * leftover) / coef, dims[1])
+            self.bx2 = QRectF((dims[0] - ((0.5 * leftover) / coef)), 0,
+                              (0.5 * leftover) / coef, dims[1])
+            # Set self.cropdims for when we save the resized image
+            self.cropdims = (int(0.5 * leftover), 0, int(self.res[0]),
+                             int(self.res[1]))
 
         print("{0}'s new res is {1}".format(dims, self.newres))
-        # We only want these red overlay boxes on full screen pictures
-        if self.cb_type.currentText() == "Full screen":
-            boxes.append(self.scene.addRect(self.bx1, Qt.NoPen, self.RED_TRANS))
-            boxes.append(self.scene.addRect(self.bx2, Qt.NoPen, self.RED_TRANS))
-            # self.boxgroup is the team of two red overlay squares
-            self.boxgroup = self.scene.createItemGroup(boxes)
-            #Set ZValue to place it under the resolution box, but above picture
-            self.boxgroup.setZValue(1)
+        boxes.append(self.scene.addRect(self.bx1, Qt.NoPen, self.RED_TRANS))
+        boxes.append(self.scene.addRect(self.bx2, Qt.NoPen, self.RED_TRANS))
+        # self.boxgroup is the team of two red overlay squares
+        self.boxgroup = self.scene.createItemGroup(boxes)
+        #Set ZValue to place it under the resolution box, but above picture
+        self.boxgroup.setZValue(1)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
