@@ -32,7 +32,7 @@ __version__ = '0.9'
 class Projwindow(QMainWindow, Ui_WebSlideshow):
 
     ### CONSTANTS ###
-    PPATH = QDir.homePath() + "/WebSlideshow Projects"  # Saved projects
+    PPATH = QDir.homePath() + "/Simple Web Slideshow Projects"  # Saved projects
     DEF_DURATION = 20               # initial / default duration
     MIN_DURATION = 1                # min duration i.e. time between slides
     MAX_DURATION = 60               # max duration i.e. time between slides
@@ -63,19 +63,23 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         except Exception as e:
             QMessageBox.warning(self, "Error", str(e))
 
-        # Blank array to hold picture filepaths
-        self.f_paths = []
-
-        # Blank array to hold picture segments
+        # Blank array to hold reference to picture segments
+        # This is the de facto "holds pictures" object
         self.psegments = []
 
         # Custom widget to hold scroll content
         self.scr_stuff = QWidget()
         self.setMinimumWidth(700)
         self.scr_vlay = QVBoxLayout()
+        # Add stretch object to push the items up from the bottom
+        self.scr_vlay.addStretch(1)
 
         # Call setupUI from UI file
         self.setupUi(self)
+
+        # More scroll area work, post-setupUi
+        self.scr_stuff.setLayout(self.scr_vlay)
+        self.scrollArea.setWidget(self.scr_stuff)
 
         # populate comboboxes etc with any customization outside of the UI file
         for effect in self.EFFECTS:
@@ -105,6 +109,12 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         self.buttonBox.rejected.connect(self.cancel_proj)
 
 
+    # Reimplement closeEvent on QMainWindow to intercept x-ing out
+    def closeEvent(self, event):
+        self.cancel_proj()
+        event.ignore()
+
+
     ### BUTTON ACTIONS
     def edit_sli_lbl(self):
         self.lbl_numslides.setText("Number of slides:   <b>(%d)</b>" %
@@ -115,40 +125,33 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         # First, update the slide label
         self.lbl_numslides.setText("Number of slides:    <b>(%d)</b>" %
                                    self.sli_numslides.value())
-        # If the bottom spacer exists, delete it.  We'll recreate it. 
-        try:
-            self.scr_vlay.removeItem(self.bot_space)
-            self.bot_space.setParent(None)
-            del self.bot_space
-            #self.deleteLater()
-        except:
-            pass
-        # Either remove or add child widgets
+
+        # If this gets called and the resolution widget hasn't been
+        # populated, give it the default value 1024x768
+        if self.cb_resolution.currentText():
+            res = self.cb_resolution.currentText()
+        else:
+            res = self.RESOLUTIONS[0]
+
         if self.sli_numslides.value() < len(self.psegments):
+            # Remove extra segments
             for i, item in enumerate(self.psegments):
                 if i >= self.sli_numslides.value():
+                    # itemAt uses a weird index that is off by one
                     self.scr_vlay.removeWidget(item)
                     item.setParent(None)
                     item.deleteLater()
+            # Need to slice to keep self.psegments accurate
             self.psegments = self.psegments[0:self.sli_numslides.value()]
         else:
+            # Add new segments
             for i in xrange(self.sli_numslides.value()):
                 if i >= len(self.psegments):
-                    # if we create object before drawing, pull default res
-                    if not self.cb_resolution.currentText():
-                        self.psegments.append(PictureSegment(i, self.RESOLUTIONS[0]))
-                    else:
-                        # otherwise, create a picturesegment and pass res
-                        # to it so it can calculate its new dimensions
-                        self.psegments.append(PictureSegment(i, self.cb_resolution.currentText()))
-        for item in self.psegments:
-            self.scr_vlay.addWidget(item)
-            item.show()
-        # Need to put a spacer at the end to push up the segments
-        self.bot_space = QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.scr_vlay.addSpacerItem(self.bot_space)
-        self.scr_stuff.setLayout(self.scr_vlay)
-        self.scrollArea.setWidget(self.scr_stuff)
+                    item = PictureSegment(i, res)
+                    self.psegments.append(item)
+                    # have to insert so the stretch object stays at bottom
+                    self.scr_vlay.insertWidget(i, item)
+                    item.show()
 
 
     def change_res(self):
@@ -176,7 +179,7 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
 
 
     def save_proj(self):
-        self.val = 0
+        val = 0
         progress = QProgressDialog("Saving current slideshow...", "Cancel", 0, 
                                    (len(self.psegments) + 3), self)
         progress.setWindowTitle("Saving Project")
@@ -217,8 +220,8 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         # First resize and save the pix in the proj folder
         self.resize_pics(curprojf)
         # First big bump in the progress bar
-        self.val = len(self.psegments)
-        progress.setValue(self.val)
+        val = len(self.psegments)
+        progress.setValue(val)
         self.resolution = [int(n) for n in self.cb_resolution.currentText().split("x")]
         self.captions = []
         for seg in self.psegments:
@@ -228,14 +231,14 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
                              self.sb_duration.value(), self.captions)
         # Create HTML, CSS and JS files in project folder
         obj.gen_html(curprojf)
-        self.val = self.val + 1
-        progress.setValue(self.val)
+        val = val + 1
+        progress.setValue(val)
         obj.gen_css(curprojf)
-        self.val = self.val + 1
-        progress.setValue(self.val)
+        val = val + 1
+        progress.setValue(val)
         obj.gen_js(curprojf)
-        self.val = self.val + 1
-        progress.setValue(self.val)
+        val = val + 1
+        progress.setValue(val)
         progress.setWindowTitle("Slideshow creation completed")
         progress.setLabelText("Slideshow creation completed.  "
                               "Your finished project can be found in:<br />"
@@ -380,7 +383,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
             # Reset scene to a 0 size for housekeeping
             self.scene.setSceneRect(0, 0, 0, 0)
         except Exception as e:
-            print("Error on line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
+            print("Line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
 
 
     def rotate_pic(self):
@@ -395,11 +398,6 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         self.pmi = self.scene.addPixmap(self.upic)
         print("New res: {0} x {1}".format(self.upic.width(), self.upic.height()))
         self.change_sltype()
-        '''
-        self.resize_scene(self.cb_type.currentText())
-        self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
-        self.get_newres()
-        '''
         self.res_tagger(self.upic, self.scene)
 
 
@@ -552,7 +550,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         try:
             self.boxgroup.scene().removeItem(self.boxgroup)
         except Exception as e:
-            print("Error on line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
+            print("Line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
         # If Letterboxed mode is selected, scale the uploaded pic
         # in the viewport box to reflect this
         # First, setSceneRect for letterboxed mode
@@ -597,9 +595,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         self.remove_cropboxes()
 
         width_coef = round(self.res[0] / float(dims[0]), 4)
-        print("Width coef is {0}".format(width_coef))
         height_coef = round(self.res[1] / float(dims[1]), 4)
-        print("Height coef is {0}".format(height_coef))
 
         # We only care if a picture is bigger than the resolution
         # If it's smaller, we'll just letterbox it as-is without scaling
@@ -627,7 +623,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
             self.boxgroup.scene().removeItem(self.boxgroup)
             del self.boxgroup
         except Exception as e:
-            print("Error on line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
+            print("Line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
 
 
     def get_newres(self):
