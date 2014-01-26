@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'webslideshow.ui'
 #
-# Created: Mon Jan  6 17:00:46 2014
+# Created: Sun Jan 26 09:50:45 2014
 #      by: pyside-uic 0.2.14 running on PySide 1.1.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -155,6 +155,8 @@ class Ui_WebSlideshow(object):
         self.menubar.setObjectName("menubar")
         self.menuFile = QtGui.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
+        self.menuAbout = QtGui.QMenu(self.menubar)
+        self.menuAbout.setObjectName("menuAbout")
         WebSlideshow.setMenuBar(self.menubar)
         self.statusbar = QtGui.QStatusBar(WebSlideshow)
         self.statusbar.setObjectName("statusbar")
@@ -165,11 +167,15 @@ class Ui_WebSlideshow(object):
         self.actionExit.setObjectName("actionExit")
         self.actionSave = QtGui.QAction(WebSlideshow)
         self.actionSave.setObjectName("actionSave")
+        self.actionAbout_Simple_Web_Slideshow = QtGui.QAction(WebSlideshow)
+        self.actionAbout_Simple_Web_Slideshow.setObjectName("actionAbout_Simple_Web_Slideshow")
         self.menuFile.addAction(self.actionNew_Slideshow)
         self.menuFile.addAction(self.actionSave)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionExit)
+        self.menuAbout.addAction(self.actionAbout_Simple_Web_Slideshow)
         self.menubar.addAction(self.menuFile.menuAction())
+        self.menubar.addAction(self.menuAbout.menuAction())
 
         self.retranslateUi(WebSlideshow)
         QtCore.QMetaObject.connectSlotsByName(WebSlideshow)
@@ -184,7 +190,9 @@ class Ui_WebSlideshow(object):
         self.lbl_numslides.setText(QtGui.QApplication.translate("WebSlideshow", "Number of slides:", None, QtGui.QApplication.UnicodeUTF8))
         self.lbl_resolution.setText(QtGui.QApplication.translate("WebSlideshow", "Optimize for resolution:", None, QtGui.QApplication.UnicodeUTF8))
         self.menuFile.setTitle(QtGui.QApplication.translate("WebSlideshow", "File", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuAbout.setTitle(QtGui.QApplication.translate("WebSlideshow", "About", None, QtGui.QApplication.UnicodeUTF8))
         self.actionNew_Slideshow.setText(QtGui.QApplication.translate("WebSlideshow", "New Slideshow", None, QtGui.QApplication.UnicodeUTF8))
         self.actionExit.setText(QtGui.QApplication.translate("WebSlideshow", "Exit", None, QtGui.QApplication.UnicodeUTF8))
         self.actionSave.setText(QtGui.QApplication.translate("WebSlideshow", "Save", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionAbout_Simple_Web_Slideshow.setText(QtGui.QApplication.translate("WebSlideshow", "About Simple Web Slideshow", None, QtGui.QApplication.UnicodeUTF8))
 

@@ -104,6 +104,7 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         self.actionNew_Slideshow.triggered.connect(self.new_proj)
         self.actionSave.triggered.connect(self.save_proj)
         self.actionExit.triggered.connect(self.cancel_proj)
+        self.actionAbout_Simple_Web_Slideshow.triggered.connect(self.about_dlg)
         # Connect buttons at bottom to actions
         self.buttonBox.accepted.connect(self.save_proj)
         self.buttonBox.rejected.connect(self.cancel_proj)
@@ -257,6 +258,28 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
             seg.le_caption.clear()
             seg.cb_type.setCurrentIndex(0)
             seg.lbl_warning.clear()
+
+
+    def about_dlg(self):
+        # Shows about info in a dialog
+        dlg = QMessageBox()
+        dlg.setIcon(QMessageBox.Information)
+        dlg.setWindowTitle("About Simple Web Slideshow")
+        text = ("<b>About Simple Web Slideshow</b>:<br /><br />"
+                "Simple Web Slideshow is open source software, licensed "
+                "under the GPL v 3.0, which guarantees your freedom to modify "
+                "the source code and redistribute the program.  <br /><br />"
+                "If you found Simple Web Slideshow useful and time-saving "
+                "in a for-profit business, a business license is $25.<br />"
+                "<br />For personal or non-profit usage Simple Web Slideshow "
+                "is <b>free</b>, but please consider supporting the software "
+                "by making a donation.<br /><br />"
+                "Methods to donate or pay (including cryptocurrencies) can be "
+                "found online at:<br /><br />"
+                "<a href='http://swss.m-thing.org#downloads'>"
+                "http://swss.m-thing.org#downloads</a>")
+        dlg.setText(text)
+        dlg.exec_()
 
 
     def resize_pics(self, dest):
