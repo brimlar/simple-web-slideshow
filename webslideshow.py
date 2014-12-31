@@ -265,19 +265,19 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         dlg = QMessageBox()
         dlg.setIcon(QMessageBox.Information)
         dlg.setWindowTitle("About Simple Web Slideshow")
-        text = ("<b>About Simple Web Slideshow</b>:<br /><br />"
-                "Simple Web Slideshow is open source software, licensed "
-                "under the GPL v 3.0, which guarantees your freedom to modify "
-                "the source code and redistribute the program.  <br /><br />"
-                "If you found Simple Web Slideshow useful and time-saving "
-                "in a for-profit business, a business license is $25.<br />"
-                "<br />For personal or non-profit usage Simple Web Slideshow "
-                "is <b>free</b>, but please consider supporting the software "
-                "by making a donation.<br /><br />"
-                "Methods to donate or pay (including cryptocurrencies) can be "
-                "found online at:<br /><br />"
-                "<a href='http://swss.m-thing.org#downloads'>"
-                "http://swss.m-thing.org#downloads</a>")
+        text = ("<b>About Simple Web Slideshow</b>:<br /><br />\
+                Simple Web Slideshow is open source software, licensed \
+                under the GPL v 3.0, which guarantees your freedom to modify \
+                the source code and redistribute the program.  <br /><br />\
+                If you found Simple Web Slideshow useful and time-saving \
+                in a for-profit business, a business license of $25 is asked.\
+                <br /><br />For personal or non-profit usage Simple Web \
+                Slideshow is <b>free</b>, but please consider supporting the \
+                software by making a donation.<br /><br />\
+                Methods to donate or pay (including cryptocurrencies) can be \
+                found online at:<br /><br />\
+                <a href='http://swss.m-thing.org#downloads'>\
+                http://swss.m-thing.org#downloads</a>")
         dlg.setText(text)
         dlg.exec_()
 
