@@ -25,6 +25,7 @@ from PySide.QtGui import *
 from ui_webslideshow import Ui_WebSlideshow
 from ui_picturesegment import Ui_PictureSegment
 from htmlgenerator import HTML_Generator
+from picturepicker import Picture_Picker
 
 __version__ = '0.9'
 
@@ -428,19 +429,18 @@ class PictureSegment(QWidget, Ui_PictureSegment):
     def upload_pic(self):
         # Let's talk to our QSettings object
         settings = QSettings()
-        # f_tup is a tuple
-        f_tup = QFileDialog.getOpenFileName(self, "Select Image",
-                                                 settings.value("current_folder"),
-                                                 "Image Files "
-                                                 "( *.png *.jpg *.bmp)")
+        p = Picture_Picker()
+        fname = False
+        if (p.exec_()):
+            fname = p.selectedFiles()[0]
 
-        if f_tup[0]:
+        if fname:
             # Clean up previous photo if it exists
             self.clean_prev()
             # we only want the image itself
-            self.upic = QPixmap(f_tup[0])
+            self.upic = QPixmap(fname)
             # We also want the file path info b/c we'll set last directory
-            self.finfo = QDir(f_tup[0])
+            self.finfo = QDir(fname)
             # Set the current_folder QSettings from path
             settings.setValue("current_folder", self.finfo.path())
             settings.sync()
@@ -515,8 +515,7 @@ class PictureSegment(QWidget, Ui_PictureSegment):
                 "means that it will not be cropped and it will be centered "
                 "in the slideshow.")
         MSG7 = ("This image is bigger than the target resolution. "
-                "It will be resized and/or cropped to compensate, but it will "
-                "look OK.")
+                "It will be cropped to compensate, but it will look OK.")
         MSG8 = ("You have chosen to Letterbox this picture, but it comes out "
                 "to be the same resolution as if you had 'full-screened' it. "
                 "It will look fine (but consider full-screening it.)")
