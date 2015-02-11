@@ -277,8 +277,8 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
                 software by making a donation.<br /><br />\
                 Methods to donate or pay (including cryptocurrencies) can be \
                 found online at:<br /><br />\
-                <a href='http://swss.m-thing.org#downloads'>\
-                http://swss.m-thing.org#downloads</a>")
+                <a href='http://sws.ideaprojects.me'>\
+                http://sws.ideaprojects.me</a>")
         dlg.setText(text)
         dlg.exec_()
 
