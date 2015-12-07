@@ -1,6 +1,6 @@
 Simple Web Slideshow
 
-This project will be licensed under the GPL Version 3.
+This project is licensed under the GPL Version 3.
 
 The intended use for this program will be to take an
 assortment of image files, resize them to a desired
