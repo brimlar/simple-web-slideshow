@@ -39,7 +39,8 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
     MAX_DURATION = 60               # max duration i.e. time between slides
     MAX_SLIDES = 100                 # max number of slides
     EFFECTS = ["Blur", "Abrupt", "HorizontalSlide", "VerticalSlide"]
-    RESOLUTIONS = ["1024x768", "1280x720", "1366x768", "1600x1200", "1920x1080"]
+    RESOLUTIONS = ["800x600", "1024x768", "1280x720", "1366x768", "1600x1200", 
+                   "1920x1080"]
 
     ### INIT
     def __init__(self, parent=None):
@@ -129,7 +130,7 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
                                    self.sli_numslides.value())
 
         # If this gets called and the resolution widget hasn't been
-        # populated, give it the default value 1024x768
+        # populated, give it the default value 800x600
         if self.cb_resolution.currentText():
             res = self.cb_resolution.currentText()
         else:
