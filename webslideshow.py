@@ -20,8 +20,9 @@ along with Simple Web Slideshow.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import sys
-from PySide.QtCore import *
-from PySide.QtGui import *
+from PySide6.QtCore import *
+from PySide6.QtWidgets import *
+from PySide6.QtGui import *
 from ui_webslideshow import Ui_WebSlideshow
 from ui_picturesegment import Ui_PictureSegment
 from htmlgenerator import HTML_Generator
@@ -35,24 +36,32 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
     ### CONSTANTS ###
     PPATH = QDir.homePath() + "/Simple Web Slideshow Projects"  # Saved projects
     DEF_DURATION = 20               # initial / default duration
-    MIN_DURATION = 1                # min duration i.e. time between slides
-    MAX_DURATION = 60               # max duration i.e. time between slides
-    MAX_SLIDES = 100                 # max number of slides
+    MIN_DURATION = 1                  # min duration i.e. time between slides
+    MAX_DURATION = 60                 # max duration i.e. time between slides
+    MAX_SLIDES = 100                  # max number of slides
     EFFECTS = ["Blur", "Abrupt", "HorizontalSlide", "VerticalSlide"]
-    RESOLUTIONS = ["800x600", "1024x768", "1280x720", "1366x768", "1600x1200", 
-                   "1920x1080"]
+       # Each entry is (friendly_label, "WxH"). The label is shown in the
+       # dropdown; the "WxH" is stored as item data and is what the code reads.
+       # Ordered small/fast to large; 1080p is the default (index 3).
+    RESOLUTIONS = [
+         ("360p (640x360)",      "640x360"),
+         ("480p (854x480)",      "854x480"),
+         ("720p (1280x720)",     "1280x720"),
+         ("1080p (1920x1080)",   "1920x1080"),
+         ("1440p (2560x1440)",   "2560x1440"),
+         ("4K (3840x2160)",      "3840x2160"),
+         ("640x480 (legacy 4:3)","640x480"),
+         ("1024x768 (legacy 4:3)","1024x768"),
+    ]
+    DEF_RESOLUTION_INDEX = 3           # 1080p
 
     ### INIT
     def __init__(self, parent=None):
-        # need to call super of Projwindow for QT init / inheritance
+          # need to call super of Projwindow for QT init / inheritance
         super(Projwindow, self).__init__(parent)
 
-        QCoreApplication.setOrganizationName("brerin.org")
-        QCoreApplication.setOrganizationDomain("brerin.org")
-        QCoreApplication.setApplicationName("HTML5 Web Slideshow Generator")
-
-        # Set custom application icon
-        self.setWindowIcon(QIcon('VideoFolder.ico'))
+        # Set custom application icon (shipped with the project as a PNG)
+        self.setWindowIcon(QIcon('Video-Folder.png'))
 
         settings = QSettings()
         settings.setValue("current_folder", QDir.homePath())
@@ -87,16 +96,44 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         for effect in self.EFFECTS:
             self.cb_effects.addItem(effect)
 
-        self.sb_duration.setRange(self.MIN_DURATION, self.MAX_DURATION)
-        self.sb_duration.setValue(self.DEF_DURATION)
+        self.le_duration.setText(str(self.DEF_DURATION))
+            # Allow free typing (no QIntValidator blocking input) but flag bad
+            # values in red via a live check; get_duration() clamps at save time.
+        self.le_duration.setToolTip(
+              "Seconds between slides. Minimum {0}, maximum {1}.".format(
+                self.MIN_DURATION, self.MAX_DURATION))
+              # A small warning label that appears *next to* the field when the
+              # value is invalid or out of range. We pull the field out of the
+              # generated grid cell and re-add it alongside the warning in a
+              # horizontal sub-layout so the warning sits right beside it rather
+              # than drifting to the far right of the row.
+        self.lbl_durwarn = QLabel(self.groupBox)
+        self.lbl_durwarn.setObjectName(u"lbl_durwarn")
+        self.lbl_durwarn.setStyleSheet("color: #c00; font-weight: bold;")
+        self.lbl_durwarn.setVisible(False)
+              # Pull the field out of its generated grid cell and re-add it
+              # alongside the warning in a horizontal sub-layout so the warning
+              # sits right beside the field instead of drifting far right.
+        self.gridLayout.removeWidget(self.le_duration)
+        dur_hbox = QHBoxLayout()
+        dur_hbox.addWidget(self.le_duration)
+        dur_hbox.addWidget(self.lbl_durwarn)
+        dur_hbox.addStretch(1)
+        self.gridLayout.addLayout(dur_hbox, 2, 1, 1, 2)
+        self.le_duration.textChanged.connect(self.check_duration)
         self.lbl_numslides.setToolTip('Pick a value from 2 to {}.'.format(self.MAX_SLIDES))
         self.sli_numslides.setMaximum(self.MAX_SLIDES)
 
-        # We already populated the default value of the slider in the UI
-        self.grow_psegments()
+          # Populate the resolution dropdown (friendly label + WxH data) and set
+          # the default *before* creating the initial slide segments, so they
+          # start at the default resolution.
+        for label, wxh in self.RESOLUTIONS:
+              # Show the friendly label, store the "WxH" as item data.
+            self.cb_resolution.addItem(label, wxh)
+        self.cb_resolution.setCurrentIndex(self.DEF_RESOLUTION_INDEX)
 
-        for res in self.RESOLUTIONS:
-            self.cb_resolution.addItem(res)
+          # We already populated the default value of the slider in the UI
+        self.grow_psegments()
 
         # Connect to buttons / signals
         self.sli_numslides.sliderMoved.connect(self.edit_sli_lbl)
@@ -109,16 +146,69 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         self.actionAbout_Simple_Web_Slideshow.triggered.connect(self.about_dlg)
         # Connect buttons at bottom to actions
         self.buttonBox.accepted.connect(self.save_proj)
-        self.buttonBox.rejected.connect(self.cancel_proj)
+        self.buttonBox.rejected.connect(self.close)
 
 
-    # Reimplement closeEvent on QMainWindow to intercept x-ing out
+     # Reimplement closeEvent on QMainWindow so that x-ing out asks
+     # whether to exit without saving, and only closes if the user confirms.
     def closeEvent(self, event):
-        self.cancel_proj()
-        event.ignore()
+        wbox = QMessageBox.warning(self, "Exit program?",
+                                    "Close the application without saving?",
+                                   QMessageBox.Cancel | QMessageBox.Ok,
+                                   QMessageBox.Cancel)
+        if wbox == QMessageBox.Ok:
+            event.accept()
+        else:
+            event.ignore()
 
 
-    ### BUTTON ACTIONS
+      ### BUTTON ACTIONS
+    def get_duration(self):
+          # Read the duration from the text field, validate it's a number in
+          # range, and fall back to the default if the field is empty/bad.
+        txt = self.le_duration.text().strip()
+        if txt == "":
+            return self.DEF_DURATION
+        try:
+            val = int(txt)
+        except ValueError:
+            QMessageBox.warning(self, "Invalid duration",
+                "Slide duration must be a whole number of seconds "
+                "({0} to {1}). Using the default ({2}).".format(
+                    self.MIN_DURATION, self.MAX_DURATION, self.DEF_DURATION))
+            return self.DEF_DURATION
+        if val < self.MIN_DURATION or val > self.MAX_DURATION:
+            val = max(self.MIN_DURATION, min(val, self.MAX_DURATION))
+            QMessageBox.warning(self, "Duration out of range",
+                "Slide duration must be between {0} and {1} seconds. "
+                "Using {2} instead.".format(self.MIN_DURATION, self.MAX_DURATION, val))
+        return val
+
+    def check_duration(self, text):
+            # Live feedback: turn the field + warning red when the value is
+            # invalid or out of range, and clear it when valid.
+        txt = text.strip()
+        valid = True
+        msg = ""
+        if txt == "":
+            valid = False
+        else:
+            try:
+                val = int(txt)
+                if val < self.MIN_DURATION or val > self.MAX_DURATION:
+                    valid = False
+            except ValueError:
+                valid = False
+        if valid:
+            self.le_duration.setStyleSheet("")
+            self.lbl_durwarn.setVisible(False)
+        else:
+            self.le_duration.setStyleSheet(
+                "QLineEdit {{ border: 1px solid #c00; color: #c00; }}")
+            self.lbl_durwarn.setVisible(True)
+            self.lbl_durwarn.setText("Enter a number from {0} to {1}".format(
+                self.MIN_DURATION, self.MAX_DURATION))
+
     def edit_sli_lbl(self):
         self.lbl_numslides.setText("Number of slides:   <b>(%d)</b>" %
                                    self.sli_numslides.sliderPosition())
@@ -129,12 +219,13 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         self.lbl_numslides.setText("Number of slides:    <b>(%d)</b>" %
                                    self.sli_numslides.value())
 
-        # If this gets called and the resolution widget hasn't been
-        # populated, give it the default value 800x600
-        if self.cb_resolution.currentText():
-            res = self.cb_resolution.currentText()
+           # If this gets called and the resolution widget hasn't been
+           # populated, give it the default value
+        data = self.cb_resolution.currentData()
+        if data:
+            res = data
         else:
-            res = self.RESOLUTIONS[0]
+            res = self.RESOLUTIONS[0][1]        # WxH of the first entry
 
         if self.sli_numslides.value() < len(self.psegments):
             # Remove extra segments
@@ -148,7 +239,7 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
             self.psegments = self.psegments[0:self.sli_numslides.value()]
         else:
             # Add new segments
-            for i in xrange(self.sli_numslides.value()):
+            for i in range(self.sli_numslides.value()):
                 if i >= len(self.psegments):
                     item = PictureSegment(i, res)
                     self.psegments.append(item)
@@ -158,9 +249,10 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
 
 
     def change_res(self):
-        # Forces viewport to adapt when res is changed
+          # Forces viewport to adapt when res is changed
+        res = self.cb_resolution.currentData() or self.RESOLUTIONS[0][1]
         for vp in self.psegments:
-            vp.vp_setter(self.cb_resolution.currentText())
+            vp.vp_setter(res)
             if not vp.upic.isNull():
                 vp.graphicsView.fitInView(vp.scene.sceneRect(), Qt.KeepAspectRatio)
                 if vp.cb_type.currentText() == "Full screen":
@@ -172,13 +264,14 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
 
 
     def cancel_proj(self):
-        # Cancels the project
-        wbox = QMessageBox.warning(self, "Exit program?", 
-                                   "Close the application without saving?",
+         # "Exit" menu item: ask to quit without saving, then close properly
+         # (accept() runs closeEvent, which asks the same question).
+        wbox = QMessageBox.warning(self, "Exit program?",
+                                    "Close the application without saving?",
                                    QMessageBox.Cancel | QMessageBox.Ok,
                                    QMessageBox.Cancel)
         if wbox == QMessageBox.Ok:
-            sys.exit()
+            self.close()
 
 
     def save_proj(self):
@@ -225,13 +318,16 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         # First big bump in the progress bar
         val = len(self.psegments)
         progress.setValue(val)
-        self.resolution = [int(n) for n in self.cb_resolution.currentText().split("x")]
+        self.resolution = [int(n) for n in (self.cb_resolution.currentData()
+                                     or self.RESOLUTIONS[0][1]).split("x")]
         self.captions = []
+        self.slidetypes = []
         for seg in self.psegments:
            self.captions.append(seg.le_caption.text())
+           self.slidetypes.append(seg.cb_type.currentText())
         obj = HTML_Generator(tit, self.cb_effects.currentText(),
                              self.sli_numslides.value(), self.resolution, 
-                             self.sb_duration.value(), self.captions)
+                             self.get_duration(), self.captions, self.slidetypes)
         # Create HTML, CSS and JS files in project folder
         obj.gen_html(curprojf)
         val = val + 1
@@ -243,18 +339,21 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
         val = val + 1
         progress.setValue(val)
         progress.setWindowTitle("Slideshow creation completed")
-        progress.setLabelText("Slideshow creation completed.  "
-                              "Your finished project can be found in:<br />"
-                              "{0}".format(curprojf))
+        progress.setLabelText("Slideshow creation completed.<br /><br />"
+                               "Your finished project can be found in:<br />"
+                               "{0}<br /><br />"
+                               "To launch your slideshow, open the index.html "
+                               "file in a modern web browser and the slideshow "
+                               "will automatically play.".format(curprojf))
         progress.setCancelButtonText("OK")
 
 
     ### CUSTOM ACTIONS
     def new_proj(self):
-        # Cancels current project, blanks values, starts new project
+          # Cancels current project, blanks values, starts new project
         self.sli_numslides.setValue(2)
-        self.sb_duration.setValue(20)
-        self.cb_resolution.setCurrentIndex(0)
+        self.le_duration.setText(str(self.DEF_DURATION))
+        self.cb_resolution.setCurrentIndex(self.DEF_RESOLUTION_INDEX)
         for seg in self.psegments:
             seg.clean_prev()
             seg.le_caption.clear()
@@ -287,15 +386,13 @@ class Projwindow(QMainWindow, Ui_WebSlideshow):
     def resize_pics(self, dest):
         for seg in self.psegments:
             if seg.upic:
-                # Then scale it properly if it's mean to be full-screened
+                  # Then scale it properly if it's meant to be full-screened
                 if seg.cb_type.currentText() == "Full screen":
                     seg.newpic = seg.upic.scaled(seg.newres[0], seg.newres[1])
-                    print("Cropping to {0}".format(seg.cropdims))
-                    # Crop the pic to the preset cropped dimensions
+                       # Crop the pic to the preset cropped dimensions
                     seg.newpic = seg.newpic.copy(*seg.cropdims)
                 elif seg.cb_type.currentText() == "Letterboxed":
                     seg.newpic = seg.upic.scaled(seg.newres[0], seg.newres[1])
-                    print("Scaling to {0}".format(seg.newres))
             else:
                 if seg.cb_type.currentText() == "Blank white":
                     # Create a blank white slide
@@ -364,17 +461,15 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         cur_mode = self.cb_type.currentText()
 
         if cur_mode == self.SLIDE_TYPES[0]:
-            # Fullscreen it!
+               # Fullscreen it! (only if a picture has been uploaded)
             if not self.upic.isNull():
                 self.get_newres()
-                # Calculate offsets to center the pixmap item
+                  # Calculate offsets to center the pixmap item
                 self.pmi.setOffset(0, 0)
-                # Enlarge scene to fit the picture
+                  # Enlarge scene to fit the picture
                 self.scene.setSceneRect(0, 0, self.upic.width(), self.upic.height())
                 self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
-            else:
-                print("self.upic does not exist")
-            # Re-enable upload button
+             # Re-enable upload button
             self.btn_upload.setEnabled(True)
         elif cur_mode == self.SLIDE_TYPES[1]:
             # Letterbox it if there is a picture present
@@ -399,16 +494,17 @@ class PictureSegment(QWidget, Ui_PictureSegment):
 
 
     def clean_prev(self):
-        # This cleans up the previous picture and all its graphics
+             # This cleans up the previous picture and all its graphics.
+             # Best-effort: if the scene is in an odd state we don't want to
+             # crash, so a failure here is swallowed.
         try:
             for item in self.scene.items():
                 self.scene.removeItem(item)
-                del item
             self.upic = QPixmap()
-            # Reset scene to a 0 size for housekeeping
+                # Reset scene to a 0 size for housekeeping
             self.scene.setSceneRect(0, 0, 0, 0)
-        except Exception as e:
-            print("Line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
+        except Exception:
+            pass
 
 
     def rotate_pic(self):
@@ -421,7 +517,6 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         self.upic = self.rpic
         del self.rpic
         self.pmi = self.scene.addPixmap(self.upic)
-        print("New res: {0} x {1}".format(self.upic.width(), self.upic.height()))
         self.change_sltype()
         self.res_tagger(self.upic, self.scene)
 
@@ -432,8 +527,10 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         settings = QSettings()
         p = Picture_Picker()
         fname = False
-        if (p.exec_()):
-            fname = p.selectedFiles()[0]
+        if p.exec():
+            selected = p.selectedFiles()
+            if selected:
+                fname = selected[0]
 
         if fname:
             # Clean up previous photo if it exists
@@ -570,13 +667,15 @@ class PictureSegment(QWidget, Ui_PictureSegment):
 
 
     def window_scale(self):
-        try:
-            self.boxgroup.scene().removeItem(self.boxgroup)
-        except Exception as e:
-            print("Line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
-        # If Letterboxed mode is selected, scale the uploaded pic
-        # in the viewport box to reflect this
-        # First, setSceneRect for letterboxed mode
+          # Remove the red overlay crop boxes if present (best-effort).
+        if hasattr(self, "boxgroup"):
+            try:
+                self.boxgroup.scene().removeItem(self.boxgroup)
+            except Exception:
+                pass
+              # If Letterboxed mode is selected, scale the uploaded pic
+              # in the viewport box to reflect this
+              # First, setSceneRect for letterboxed mode
         self.resize_scene(self.cb_type.currentText())
 
         # Calculate offsets to center the pixmap item
@@ -620,33 +719,41 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         width_coef = round(self.res[0] / float(dims[0]), 4)
         height_coef = round(self.res[1] / float(dims[1]), 4)
 
-        # We only care if a picture is bigger than the resolution
-        # If it's smaller, we'll just letterbox it as-is without scaling
+           # We only care if a picture is bigger than the resolution.
+           # If it's smaller, we'll just letterbox it as-is without scaling.
         if (width_coef < 1) or (height_coef < 1):
-            # we want the smaller number, the more severe ratio
+               # we want the smaller number, the more severe ratio
             coef = min(width_coef, height_coef)
             self.newres = [int(coef * dims[0]), int(coef * dims[1])]
-            # Resize the scene so it stretches to fit the larger pic
-            self.scene.setSceneRect(0, 0, self.upic.width(), self.upic.height())
-            # and draw the larger picture within the viewport
+               # The picture is larger than the target, so scale the scene down to
+               # the target resolution and center the (scaled) picture within it.
+               # This also resets any stale offset left over from a previous call,
+               # which was the cause of the picture drifting off-center when the
+               # resolution was changed while in Letterboxed mode.
+            self.scene.setSceneRect(0, 0, self.res[0], self.res[1])
+            left_offset = (self.res[0] - self.upic.width()) * coef / 2
+            top_offset = (self.res[1] - self.upic.height()) * coef / 2
+            self.pmi.setOffset(left_offset, top_offset)
+               # and draw the picture centered within the viewport
             self.graphicsView.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         else:
-            # else we just accept the smaller picture's dimensions
+               # else we just accept the smaller picture's dimensions
             self.newres = [dims[0], dims[1]]
-            # Resize the scene so it goes back to normal
+               # Resize the scene so it goes back to normal
             self.scene.setSceneRect(0, 0, self.res[0], self.res[1])
-            # and scale the viewport to the the combobox resolution
+               # and scale the viewport to the combobox resolution
             self.window_scale()
-        print("{0}'s new res is {1}".format(dims, self.newres))
 
 
     def remove_cropboxes(self):
-        # Remove the red overlay boxes if the item has them
-        try:
-            self.boxgroup.scene().removeItem(self.boxgroup)
-            del self.boxgroup
-        except Exception as e:
-            print("Line {0}: {1}".format(sys.exc_info()[-1].tb_lineno, e))
+              # Remove the red overlay boxes if the item has them. Use hasattr so
+              # the first call (before any boxgroup exists) is a no-op.
+        if hasattr(self, "boxgroup"):
+            try:
+                self.boxgroup.scene().removeItem(self.boxgroup)
+                del self.boxgroup
+            except Exception:
+                pass
 
 
     def get_newres(self):
@@ -698,7 +805,6 @@ class PictureSegment(QWidget, Ui_PictureSegment):
             self.cropdims = (int(0.5 * leftover), 0, int(self.res[0]),
                              int(self.res[1]))
 
-        print("{0}'s new res is {1}".format(dims, self.newres))
         boxes.append(self.scene.addRect(self.bx1, Qt.NoPen, self.RED_TRANS))
         boxes.append(self.scene.addRect(self.bx2, Qt.NoPen, self.RED_TRANS))
         # self.boxgroup is the team of two red overlay squares
@@ -707,9 +813,14 @@ class PictureSegment(QWidget, Ui_PictureSegment):
         self.boxgroup.setZValue(1)
 
 if __name__ == '__main__':
+     # Configure the settings/application identity *before* creating the
+     # QApplication, so QSettings has the right org/app name from the start.
+    QCoreApplication.setOrganizationName("brerin.org")
+    QCoreApplication.setOrganizationDomain("brerin.org")
+    QCoreApplication.setApplicationName("HTML5 Web Slideshow Generator")
+
     app = QApplication(sys.argv)
     project = Projwindow()
     project.show()
 
-    app.exec_()
-    sys.exit()
+    sys.exit(app.exec())

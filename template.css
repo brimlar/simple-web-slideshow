@@ -15,7 +15,38 @@ box-shadow: 2px 2px 2px #222;
 width: 100%;
 height: 100%;
 font-size: 24px;
-color: #fff;
+    color: #fff;
+opacity: 0;
+     /* The active slide is revealed by CSS transitions; JS only toggles
+       the .active class, so the effect lives entirely in CSS below. */
+    transition-property: opacity, transform;
+    transition-duration: 0.6s;
+    transition-timing-function: ease;
+}}
+
+.frames.active {{
+opacity: 1;
+}}
+
+     /* Blur (default): a simple cross-fade. */
+     /* Abrupt: no animation, instant swap. */
+.frames.abrupt, .frames.abrupt.active {{
+    transition-duration: 0s;
+}}
+
+     /* HorizontalSlide / VerticalSlide: slide in from the edge. We animate
+       transform (not left/top) so the browser keeps it on the GPU. */
+.frames.horizontal {{
+    transform: translateX(100%);
+}}
+.frames.horizontal.active {{
+    transform: translateX(0);
+}}
+.frames.vertical {{
+    transform: translateY(100%);
+}}
+.frames.vertical.active {{
+    transform: translateY(0);
 }}
 
 .textoverlay {{
@@ -29,22 +60,44 @@ bottom: 20px;
 text-align: center;
 }}
 
-.black_on_white {{
-width: 100%;
+      /* The title slide (frame 1): the slideshow name, large and centered. */
+.titleoverlay {{
 position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+width: 90%;
 text-align: center;
-top: 40%;
+color: #fff;
+font-size: 3em;
+font-weight: bold;
+white-space: normal;
+}}
+
+.black_on_white {{
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+width: 90%;
+text-align: center;
 color: #000;
-font-size: 2em;
+font-size: 3em;
+font-weight: bold;
+white-space: normal;
 }}
 
 .white_on_black {{
-width: 100%;
 position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+width: 90%;
 text-align: center;
-top: 40%;
 color: #fff;
-font-size: 2em;
+font-size: 3em;
+font-weight: bold;
+white-space: normal;
 }}
 
 {frame_css}
