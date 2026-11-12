@@ -1,6 +1,5 @@
 # Python virtual environments
 venv/
-venv
 .venv/
 
 # Python bytecode / caches
@@ -8,9 +7,15 @@ __pycache__/
 *.py[cod]
 *.pyc
 
+# Build / packaged app output
+build/
+dist/
+*.egg-info/
+
 # OS / editor cruft
 .DS_Store
 *.swp
+*.swo
 
 # Test output
 out_test/
