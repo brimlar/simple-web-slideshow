@@ -120,6 +120,12 @@ It checks known cases, randomized property tests across many
 frame sizes, and the float-truncation bug the old `int()` math
 used to fall into.
 
+## Business Use
+
+We ask that if you find Simple Web Slideshow useful in a for-profit
+business, that you consider sending $25 to the project.  You may
+contact Brimlar here at this GitHub project.
+
 ## Project layout
 
 | File | Purpose |
