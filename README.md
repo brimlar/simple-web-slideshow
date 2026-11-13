@@ -28,6 +28,9 @@ smaller resolution, you can dramatically decrease the
 transmission time of the data via the web browser.
 That is why I pursued this simplistic method.
 
+## Screenshot of Version 1.0.0
+<img width="613" height="720" alt="image" src="https://github.com/user-attachments/assets/5cb1c5bf-39d6-4a5d-b783-4a7c07846b0e" />
+
 ## Version 1.0
 
 Version 1.0 is a port from the original **Python 2 / PySide 1.x**
